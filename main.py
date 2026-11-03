@@ -1,7 +1,5 @@
-# Изменённая строка импорта:
-from telegram import Update, BotCommand  # <--- Теперь всё из основного пакета!
+from telegram import Update, BotCommand
 from telegram.ext import ApplicationBuilder, MessageHandler, filters
-
 import re
 import os
 from starlette.applications import Starlette
@@ -30,13 +28,18 @@ def main():
     TOKEN = os.getenv("TELEGRAM_TOKEN") 
 
     application = (
-        Application.builder().token(TOKEN).updater(None) # Используем Webhook
-        .build()
+        Application.builder()                     # Создаём билдер
+            .token(TOKEN)                        # Указываем токен
+            .updater(None)                       # Отключаем Updater для webhook'ов
+            .build()                             # ОБЯЗАТЕЛЬНЫЙ шаг! Собираем объект
     )
 
     URL = os.getenv('RENDER_EXTERNAL_URL') + '/telegram'
 
-    asyncio.run(application.bot.set_webhook(url=URL))
+    asyncio.run(application.bot.set_webhook(
+        url=URL,
+        allowed_updates=Update.ALL_TYPES          # Это важно для работы всех команд
+    ))
 
     # Обработчики запросов от Telegram и healthcheck'ов Render
     async def telegram(request):
