@@ -1,6 +1,7 @@
-import asyncio
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, BotCommand
+# Изменённая строка импорта:
+from telegram import Update, BotCommand  # <--- Теперь всё из основного пакета!
+from telegram.ext import ApplicationBuilder, MessageHandler, filters
+
 import re
 import os
 from starlette.applications import Starlette
@@ -9,7 +10,6 @@ from starlette.routing import Route
 import uvicorn
 
 
-# Регулярное выражение для команды /gift
 PATTERN = r"/gift\s+(https?://[^ ]+)\s+(\d+)\s*⭐️"
 
 async def gift_handler(update: Update):
@@ -23,28 +23,20 @@ async def gift_handler(update: Update):
     
     final_message = f"Пользователь @xooron предлагает Вам {number} ⭐️ за коллекционный предмет {link}\n• Предложение действует еще 5ч. 59 мин."
     
-    # Отправляем новое сообщение без удаления старого (на Render это может вызвать ошибку)
+    # Отправляем сообщение без удаления исходного
     await update.effective_chat.send_message(final_message)
 
 def main():
-    TOKEN = os.getenv("TELEGRAM_TOKEN")  # Токен берётся из переменных окружения!
+    TOKEN = os.getenv("TELEGRAM_TOKEN") 
 
     application = (
-        ApplicationBuilder().token(TOKEN).updater(None)  # Убираем Updater для Webhook
+        Application.builder().token(TOKEN).updater(None) # Используем Webhook
         .build()
     )
 
-    # Добавляем обработчик команд
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, gift_handler))
+    URL = os.getenv('RENDER_EXTERNAL_URL') + '/telegram'
 
-    # Устанавливаем описание команды
-    application.bot.set_my_commands([BotCommand("/gift", "Отправить предложение обмена")])
-
-    # URL для вебхука
-    url = os.getenv('RENDER_EXTERNAL_URL') + '/telegram'
-
-    # Настраиваем вебхук
-    asyncio.run(application.bot.set_webhook(url=url, allowed_updates=Update.ALL_TYPES))
+    asyncio.run(application.bot.set_webhook(url=URL))
 
     # Обработчики запросов от Telegram и healthcheck'ов Render
     async def telegram(request):
@@ -66,7 +58,6 @@ def main():
     config = uvicorn.Config(app=app, host='0.0.0.0', port=int(os.getenv('PORT', '8000')))
     server = uvicorn.Server(config=config)
 
-    # Запуск сервера
     with application:
         server.run()
 
